@@ -3,6 +3,8 @@ import logging
 import re
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Text
 
+import aiohttp
+
 from rasa.core.channels.channel import InputChannel, OutputChannel, UserMessage
 from rasa.utils.common import raise_warning
 from sanic import Blueprint, response
@@ -23,7 +25,11 @@ class SlackBot(OutputChannel):
     def __init__(self, token: Text, slack_channel: Optional[Text] = None) -> None:
 
         self.slack_channel = slack_channel
-        self.client = WebClient(token, run_async=True)
+        self.client = WebClient(
+            token,
+            run_async=True,
+            session=aiohttp.ClientSession(trust_env=True)
+        )
         super().__init__()
 
     @staticmethod
@@ -31,16 +37,16 @@ class SlackBot(OutputChannel):
         return "".join([b.get("title", "") for b in buttons])
 
     async def send_text_message(
-        self, recipient_id: Text, text: Text, **kwargs: Any
+            self, recipient_id: Text, text: Text, **kwargs: Any
     ) -> None:
         recipient = self.slack_channel or recipient_id
         for message_part in text.strip().split("\n\n"):
             await self.client.chat_postMessage(
-                channel=recipient, as_user=True, text=message_part, type="mrkdwn",
+                channel=recipient, as_user=True, text=message_part, type="mrkdwn"
             )
 
     async def send_image_url(
-        self, recipient_id: Text, image: Text, **kwargs: Any
+            self, recipient_id: Text, image: Text, **kwargs: Any
     ) -> None:
         recipient = self.slack_channel or recipient_id
         image_block = {"type": "image", "image_url": image, "alt_text": image}
@@ -49,7 +55,7 @@ class SlackBot(OutputChannel):
         )
 
     async def send_attachment(
-        self, recipient_id: Text, attachment: Dict[Text, Any], **kwargs: Any
+            self, recipient_id: Text, attachment: Dict[Text, Any], **kwargs: Any
     ) -> None:
         recipient = self.slack_channel or recipient_id
         await self.client.chat_postMessage(
@@ -57,11 +63,11 @@ class SlackBot(OutputChannel):
         )
 
     async def send_text_with_buttons(
-        self,
-        recipient_id: Text,
-        text: Text,
-        buttons: List[Dict[Text, Any]],
-        **kwargs: Any,
+            self,
+            recipient_id: Text,
+            text: Text,
+            buttons: List[Dict[Text, Any]],
+            **kwargs: Any,
     ) -> None:
         recipient = self.slack_channel or recipient_id
 
@@ -91,7 +97,7 @@ class SlackBot(OutputChannel):
         )
 
     async def send_custom_json(
-        self, recipient_id: Text, json_message: Dict[Text, Any], **kwargs: Any
+            self, recipient_id: Text, json_message: Dict[Text, Any], **kwargs: Any
     ) -> None:
         json_message.setdefault("channel", self.slack_channel or recipient_id)
         json_message.setdefault("as_user", True)
@@ -121,12 +127,12 @@ class SlackInput(InputChannel):
         # pytype: enable=attribute-error
 
     def __init__(
-        self,
-        slack_token: Text,
-        slack_channel: Optional[Text] = None,
-        slack_retry_reason_header: Optional[Text] = None,
-        slack_retry_number_header: Optional[Text] = None,
-        errors_ignore_retry: Optional[List[Text]] = None,
+            self,
+            slack_token: Text,
+            slack_channel: Optional[Text] = None,
+            slack_retry_reason_header: Optional[Text] = None,
+            slack_retry_number_header: Optional[Text] = None,
+            errors_ignore_retry: Optional[List[Text]] = None,
     ) -> None:
         """Create a Slack input channel.
 
@@ -174,13 +180,13 @@ class SlackInput(InputChannel):
     @staticmethod
     def _is_user_message(slack_event: Dict) -> bool:
         return (
-            slack_event.get("event")
-            and (
-                slack_event.get("event", {}).get("type") == "message"
-                or slack_event.get("event", {}).get("type") == "app_mention"
-            )
-            and slack_event.get("event", {}).get("text")
-            and not slack_event.get("event", {}).get("bot_id")
+                slack_event.get("event")
+                and (
+                        slack_event.get("event", {}).get("type") == "message"
+                        or slack_event.get("event", {}).get("type") == "app_mention"
+                )
+                and slack_event.get("event", {}).get("text")
+                and not slack_event.get("event", {}).get("bot_id")
         )
 
     @staticmethod
@@ -274,12 +280,12 @@ class SlackInput(InputChannel):
             return action.get("selected_date")
 
     async def process_message(
-        self,
-        request: Request,
-        on_new_message: Callable[[UserMessage], Awaitable[Any]],
-        text,
-        sender_id: Optional[Text],
-        metadata: Optional[Dict],
+            self,
+            request: Request,
+            on_new_message: Callable[[UserMessage], Awaitable[Any]],
+            text,
+            sender_id: Optional[Text],
+            metadata: Optional[Dict],
     ) -> Any:
         """Slack retries to post messages up to 3 times based on
         failure conditions defined here:
@@ -335,7 +341,7 @@ class SlackInput(InputChannel):
         }
 
     def blueprint(
-        self, on_new_message: Callable[[UserMessage], Awaitable[Any]]
+            self, on_new_message: Callable[[UserMessage], Awaitable[Any]]
     ) -> Blueprint:
         slack_webhook = Blueprint("slack_webhook", __name__)
 
@@ -375,7 +381,7 @@ class SlackInput(InputChannel):
                     return response.json(output.get("challenge"))
 
                 elif self._is_user_message(output) and self._is_supported_channel(
-                    output, metadata
+                        output, metadata
                 ):
                     return await self.process_message(
                         request,
@@ -397,9 +403,9 @@ class SlackInput(InputChannel):
 
     def _is_supported_channel(self, slack_event: Dict, metadata: Dict) -> bool:
         return (
-            self._is_direct_message(slack_event)
-            or self._is_app_mention(slack_event)
-            or metadata["out_channel"] == self.slack_channel
+                self._is_direct_message(slack_event)
+                or self._is_app_mention(slack_event)
+                or metadata["out_channel"] == self.slack_channel
         )
 
     def get_output_channel(self, channel: Optional[Text] = None) -> OutputChannel:
