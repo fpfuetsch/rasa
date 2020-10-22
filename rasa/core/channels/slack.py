@@ -3,14 +3,12 @@ import logging
 import re
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Text
 
-import aiohttp
-
 from rasa.core.channels.channel import InputChannel, OutputChannel, UserMessage
 from rasa.utils.common import raise_warning
 from sanic import Blueprint, response
 from sanic.request import Request
 from sanic.response import HTTPResponse
-from slack import WebClient
+from slack import AsyncWebClient
 
 logger = logging.getLogger(__name__)
 
@@ -25,10 +23,9 @@ class SlackBot(OutputChannel):
     def __init__(self, token: Text, slack_channel: Optional[Text] = None) -> None:
 
         self.slack_channel = slack_channel
-        self.client = WebClient(
+        self.client = AsyncWebClient(
             token,
-            run_async=True,
-            session=aiohttp.ClientSession(trust_env=True)
+            trust_env_in_session=True
         )
         super().__init__()
 
