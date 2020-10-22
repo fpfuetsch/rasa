@@ -338,20 +338,32 @@ class SlackInput(InputChannel):
             slack_event = request.json
             event = slack_event.get("event", {})
 
+            users = []
+            if "authed_users" in slack_event:
+                users = slack_event.get("authed_users")
+            elif (
+                "authorizations" in slack_event
+                and len(slack_event.get("authorizations")) > 0
+            ):
+                users.append(slack_event.get("authorizations")[0].get("user_id"))
+
             return {
                 "out_channel": event.get("channel"),
-                "users": slack_event.get("authed_users"),
+                "users": users,
             }
 
         if content_type == "application/x-www-form-urlencoded":
             # if URL-encoded message is received
             output = request.form
             payload = json.loads(output["payload"][0])
-            message = payload.get("message", {})
-            thread_id = message.get("thread_ts", message.get("ts"))
+
+            users = []
+            if payload.get("user", {}).get("id"):
+                users.append(payload.get("user", {}).get("id"))
+
             return {
                 "out_channel": payload.get("channel", {}).get("id"),
-                "users": payload.get("user", {}).get("id"),
+                "users": users,
             }
 
         return {}
