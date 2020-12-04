@@ -57,7 +57,7 @@ ENV PATH="/opt/venv/bin:$PATH"
 # update permissions & change user to not run as root
 WORKDIR /app
 RUN chgrp -R 0 /app && chmod -R g=u /app
-RUN useradd -u 1001 generic
+RUN useradd -u 1001 -g 0 generic
 USER 1001:1001
 
 # create a volume for temporary data
