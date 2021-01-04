@@ -57,8 +57,8 @@ ENV PATH="/opt/venv/bin:$PATH"
 # update permissions & change user to not run as root
 WORKDIR /app
 RUN useradd -u 1001 -g 0 generic
-RUN chown -R 1001:1001 /app
-USER 1001:1001
+RUN chown -R 1001:0 /app
+USER 1001:0
 
 # create a volume for temporary data
 VOLUME /tmp
